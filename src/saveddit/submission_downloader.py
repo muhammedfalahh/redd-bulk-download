@@ -352,12 +352,22 @@ class SubmissionDownloader:
             audio_downloaded = False
             audio_save_path = os.path.join(
                 output_path, media_id + "_audio.mp4")
-            try:
-                urllib.request.urlretrieve(
-                    submission.url + "/DASH_audio.mp4", audio_save_path)
-                audio_downloaded = True
-            except Exception as e:
-                pass
+            # Try different possible audio URLs
+            audio_urls = [
+                submission.url + "/DASH_audio.mp4",
+                submission.url + "/audio",
+                media["reddit_video"]["fallback_url"].replace("1080.mp4", "audio").replace("720.mp4", "audio")
+            ]
+            
+            for audio_url in audio_urls:
+                try:
+                    urllib.request.urlretrieve(audio_url, audio_save_path)
+                    audio_downloaded = True
+                    self.logger.spam(self.indent_2 + "Successfully downloaded audio from " + audio_url)
+                    break
+                except Exception as e:
+                    self.logger.spam(self.indent_2 + "Failed to download audio from " + audio_url)
+                    continue
 
             if audio_downloaded == True:
                 # Merge mp4 files
