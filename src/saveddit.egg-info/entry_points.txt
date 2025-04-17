@@ -1,0 +1,2 @@
+[console_scripts]
+saveddit = saveddit.saveddit:main

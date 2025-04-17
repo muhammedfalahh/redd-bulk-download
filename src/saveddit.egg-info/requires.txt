@@ -1,0 +1,10 @@
+praw
+verboselogs
+requests
+colorama
+coloredlogs
+youtube_dl
+tqdm
+ffmpeg_python
+beautifulsoup4
+PyYAML
