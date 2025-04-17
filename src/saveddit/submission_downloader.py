@@ -14,6 +14,7 @@ import praw
 from pprint import pprint
 import re
 import requests
+import urllib3
 from tqdm import tqdm
 import urllib.request
 import youtube_dl
@@ -386,7 +387,13 @@ class SubmissionDownloader:
 
     def get_gfycat_embedded_video_url(self, url):
         try:
-            response  = requests.get(url)
+            try:
+                response = requests.get(url)
+            except (requests.exceptions.ConnectionError, urllib3.exceptions.MaxRetryError) as e:
+                self.logger.error(self.indent_2 + f"Failed to connect to {url}")
+                self.logger.error(self.indent_2 + "Connection error occurred, skipping embedded video lookup")
+                return ""
+                
             data = response.text
             soup = BeautifulSoup(data, features="html.parser")
 
@@ -418,17 +425,29 @@ class SubmissionDownloader:
             return ""
 
     def guess_extension(self, url):
-        response = requests.get(url)
-        content_type = response.headers['content-type']
-        return mimetypes.guess_extension(content_type)
+        try:
+            response = requests.get(url)
+            content_type = response.headers['content-type']
+            return mimetypes.guess_extension(content_type)
+        except (requests.exceptions.ConnectionError, urllib3.exceptions.MaxRetryError) as e:
+            self.logger.error(self.indent_2 + f"Failed to connect to {url}")
+            self.logger.error(self.indent_2 + "Connection error occurred while guessing file extension")
+            return ".mp4"  # Default to mp4 as fallback
 
     def get_redirect_url(self, url):
-        r = requests.get(url)
-        return r.url
+        try:
+            r = requests.get(url)
+            return r.url
+        except (requests.exceptions.ConnectionError, urllib3.exceptions.MaxRetryError) as e:
+            self.logger.error(self.indent_2 + f"Failed to connect to {url}")
+            self.logger.error(self.indent_2 + "Connection error occurred, skipping download")
+            return None
 
     def download_gfycat_or_redgif(self, submission, output_dir):
         # Check if gfycat redirects to gifdeliverynetwork
         redirect_url = self.get_redirect_url(submission.url)
+        if redirect_url is None:
+            return
         if "gfycat.com" in submission.url and "gifdeliverynetwork.com" in redirect_url:
             self.logger.spam(
                 self.indent_2 + "This is a gfycat link that redirects to gifdeliverynetwork.com")
